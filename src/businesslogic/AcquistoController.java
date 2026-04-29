@@ -40,6 +40,7 @@ public class AcquistoController {
             return false; // Fallimento 
         }
     }
+
     public boolean rimuoviDalCarrello(Libro libro) {
         // Recuperiamo la giacenza attuale dal DB
         Libro libroDB = libroDAO.getLibroById(libro.getId());
@@ -49,5 +50,17 @@ public class AcquistoController {
             return libroDAO.updateQuantita(libro.getId(), nuovaGiacenza);
         }
         return false;
+    }
+
+    // Metodo per il calcolo del totale utilizzando il Pattern Strategy
+    public double calcolaTotaleOrdine(double totaleLordo, ScontoStrategy strategia) {
+        // Se non viene passata una strategia, usiamo di default "Sconto Nullo"
+        if (strategia == null) {
+            strategia = new ScontoNullo();
+        }
+        
+        double totaleFinale = strategia.applicaSconto(totaleLordo);
+        System.out.println("Calcolo Totale: Lordo " + totaleLordo + "€ -> Scontato " + totaleFinale + "€");
+        return totaleFinale;
     }
 }
