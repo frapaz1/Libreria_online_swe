@@ -3,6 +3,7 @@ package businesslogic;
 import domain.Libro;
 import orm.LibroDAO;
 import java.sql.Connection;
+import java.util.List;
 
 public class AcquistoController {
     private LibroDAO libroDAO; 
@@ -62,5 +63,22 @@ public class AcquistoController {
         double totaleFinale = strategia.applicaSconto(totaleLordo);
         System.out.println("Calcolo Totale: Lordo " + totaleLordo + "€ -> Scontato " + totaleFinale + "€");
         return totaleFinale;
+    }
+ // --- GESTIONE PREFERITI (WISHLIST) ---
+
+    public boolean aggiungiAPreferiti(int idLibro) {
+        return libroDAO.aggiungiPreferito(idLibro);
+    }
+
+    public boolean rimuoviDaPreferiti(int idLibro) {
+        return libroDAO.rimuoviPreferito(idLibro);
+    }
+
+    public List<Libro> getPreferiti() {
+        return libroDAO.getLibriPreferiti();
+    }
+    
+    public boolean isPreferito(int idLibro) {
+        return libroDAO.isPreferito(idLibro);
     }
 }

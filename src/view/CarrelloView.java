@@ -12,46 +12,55 @@ public class CarrelloView extends JDialog {
     private JList<String> displayList;
     private List<Libro> carrello;
     private AcquistoController controller;
-    private Runnable onUpdate; // Per aggiornare la Home quando chiudiamo
-    private JCheckBox checkStudente; // Checkbox per attivare lo sconto
+    private Runnable onUpdate; 
+    private JCheckBox checkStudente; 
 
     public CarrelloView(JFrame parent, List<Libro> carrello, AcquistoController controller, Runnable onUpdate) {
-        super(parent, "Il Tuo Carrello", true);
+        super(parent, "Il Tuo Carrello", true); 
         this.carrello = carrello;
         this.controller = controller;
         this.onUpdate = onUpdate;
 
-        setSize(400, 550);
+        setSize(500, 550); 
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout(10, 10));
 
         // Lista grafica
         listModel = new DefaultListModel<>();
         displayList = new JList<>(listModel);
-        
         add(new JScrollPane(displayList), BorderLayout.CENTER);
 
-        // Selezione dello sconto (Pattern Strategy)
+        // Selezione dello sconto
         JPanel panelSconto = new JPanel();
         checkStudente = new JCheckBox("Applica Sconto Studente (10%)");
-        checkStudente.addActionListener(e -> aggiornaListaUI()); // Ricalcola quando cambia la selezione
+        checkStudente.addActionListener(e -> aggiornaListaUI()); 
         panelSconto.add(checkStudente);
         add(panelSconto, BorderLayout.NORTH);
 
-        // Pannello Azioni
-        JPanel panelAzioni = new JPanel(new GridLayout(2, 1, 5, 5));
+        // Pannello Azioni 
+        JPanel panelAzioni = new JPanel(new GridLayout(3, 1, 5, 5));
+        panelAzioni.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
-        JButton btnRimuovi = new JButton("Rimuovi Elemento Selezionato");
+        // Bottone Pagamento 
+        JButton btnPaga = new JButton("💳 Procedi al Pagamento");
+        btnPaga.setBackground(new Color(46, 204, 113)); 
+        btnPaga.setForeground(Color.WHITE);
+        btnPaga.setFont(new Font("Arial", Font.BOLD, 14));
+        btnPaga.addActionListener(e -> effettuaPagamento());
+
+        // Bottone Rimuovi
+        JButton btnRimuovi = new JButton("🗑 Rimuovi Elemento Selezionato");
         btnRimuovi.addActionListener(e -> rimuoviElemento());
         
+        // Bottone Chiudi
         JButton btnChiudi = new JButton("Torna allo Shopping");
         btnChiudi.addActionListener(e -> dispose());
 
+        panelAzioni.add(btnPaga);
         panelAzioni.add(btnRimuovi);
         panelAzioni.add(btnChiudi);
         add(panelAzioni, BorderLayout.SOUTH);
 
-        // Inizializzazione della UI
         aggiornaListaUI();
     }
 
@@ -63,7 +72,6 @@ public class CarrelloView extends JDialog {
             totaleLordo += l.getPrezzo();
         }
 
-        // Determiniamo la strategia di sconto
         ScontoStrategy strategia;
         if (checkStudente.isSelected()) {
             strategia = new ScontoFedelta();
@@ -71,9 +79,7 @@ public class CarrelloView extends JDialog {
             strategia = new ScontoNullo();
         }
 
-        // Il controller calcola il totale utilizzando la strategia scelta
         double totaleScontato = controller.calcolaTotaleOrdine(totaleLordo, strategia);
-
         setTitle("Carrello - Totale: €" + String.format("%.2f", totaleScontato));
     }
 
@@ -82,16 +88,48 @@ public class CarrelloView extends JDialog {
         if (index != -1) {
             Libro libroDaRimuovere = carrello.get(index);
             
-            // Logica di Business: restituisci al DB
             if (controller.rimuoviDalCarrello(libroDaRimuovere)) {
-                // Rimuovi dalla lista locale
                 carrello.remove(index);
                 aggiornaListaUI();
-                onUpdate.run(); // Notifica la Home di ricaricare le giacenze
+                onUpdate.run(); 
                 JOptionPane.showMessageDialog(this, "Libro rimosso e tornato disponibile in magazzino.");
             }
         } else {
             JOptionPane.showMessageDialog(this, "Seleziona un libro da rimuovere.");
+        }
+    }
+
+    // METODO PER IL PAGAMENTO 
+    private void effettuaPagamento() {
+        if (carrello.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Il carrello è vuoto! Aggiungi dei libri prima di pagare.");
+            return;
+        }
+
+        // Recuperiamo il totale finale per mostrarlo nello scontrino
+        double totaleLordo = 0;
+        for (Libro l : carrello) { totaleLordo += l.getPrezzo(); }
+        ScontoStrategy strategia = checkStudente.isSelected() ? new ScontoFedelta() : new ScontoNullo();
+        double totaleScontato = controller.calcolaTotaleOrdine(totaleLordo, strategia);
+
+        // Chiediamo conferma all'utente
+        int conferma = JOptionPane.showConfirmDialog(this, 
+            "Confermi l'acquisto per un totale di €" + String.format("%.2f", totaleScontato) + "?", 
+            "Conferma Pagamento", 
+            JOptionPane.YES_NO_OPTION);
+
+        if (conferma == JOptionPane.YES_OPTION) {
+            // Simuliamo il successo del pagamento
+            JOptionPane.showMessageDialog(this, "Pagamento completato con successo! Grazie per il tuo acquisto.");
+            
+            // Svuotiamo la lista locale
+            carrello.clear();
+            
+            // Diciamo alla Home di ricaricare l'interfaccia
+            onUpdate.run();
+            
+            // Chiudiamo la finestra del carrello
+            dispose();
         }
     }
 }

@@ -45,7 +45,6 @@ public class HomeView extends JFrame {
         JTextField searchBar = new JTextField("Cerca titolo o autore...", 20);
         searchBar.setForeground(Color.GRAY);
         
-        // Pulizia del testo al click
         searchBar.addFocusListener(new FocusAdapter() {
             public void focusGained(FocusEvent e) {
                 if (searchBar.getText().equals("Cerca titolo o autore...")) {
@@ -61,19 +60,29 @@ public class HomeView extends JFrame {
             }
         });
 
-        // Tasto INVIO per cercare
         searchBar.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     String testo = searchBar.getText().trim();
                     if (testo.isEmpty() || testo.equals("Cerca titolo o autore...")) {
-                        refreshCatalogo(""); // Stringa vuota = ricarica tutto
+                        refreshCatalogo(""); 
                     } else {
-                        refreshCatalogo(testo); // Cerca la parola chiave
+                        refreshCatalogo(testo); 
                     }
                 }
             }
+        });
+
+        // BOTTONE WISHLIST IN ALTO
+        JButton btnApriPreferiti = new JButton("❤ Wishlist");
+        btnApriPreferiti.setBackground(new Color(231, 76, 60)); // Rosso
+        btnApriPreferiti.setForeground(Color.WHITE);
+        btnApriPreferiti.setFont(new Font("Arial", Font.BOLD, 14));
+        btnApriPreferiti.addActionListener(e -> {
+            AcquistoController ctrl = new AcquistoController(conn);
+            PreferitiView view = new PreferitiView(this, ctrl);
+            view.setVisible(true);
         });
 
         btnCarrello = new JButton("🛒 Carrello (0)");
@@ -84,6 +93,7 @@ public class HomeView extends JFrame {
         JPanel eastPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         eastPanel.setOpaque(false); 
         eastPanel.add(searchBar);
+        eastPanel.add(btnApriPreferiti); // Aggiunto alla barra in alto
         eastPanel.add(btnCarrello);
         
         headerPanel.add(eastPanel, BorderLayout.EAST);
@@ -93,22 +103,21 @@ public class HomeView extends JFrame {
         gridPanel = new JPanel(new GridLayout(0, 3, 15, 15));
         gridPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        refreshCatalogo(""); // Inizialmente carica tutti i libri
+        refreshCatalogo(""); 
 
         JScrollPane scrollPane = new JScrollPane(gridPanel);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         add(scrollPane, BorderLayout.CENTER);
     }
 
-    //  refreshCatalogo ora accetta un termine di ricerca 
     private void refreshCatalogo(String ricerca) {
         gridPanel.removeAll();
         
         List<Libro> libri;
         if (ricerca.isEmpty()) {
-            libri = libroDAO.getAllLibri(); // Tutti
+            libri = libroDAO.getAllLibri(); 
         } else {
-            libri = libroDAO.cercaLibri(ricerca); // Solo quelli filtrati
+            libri = libroDAO.cercaLibri(ricerca); 
         }
 
         if (libri.isEmpty()) {
@@ -145,9 +154,20 @@ public class HomeView extends JFrame {
         prezzo.setFont(new Font("Arial", Font.BOLD, 16));
         prezzo.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Due bottoni, uno per i dettagli, uno per il carrello
         JPanel panelBottoni = new JPanel(new FlowLayout());
         panelBottoni.setBackground(Color.WHITE);
+
+        // BOTTONE AGGIUNGI PREFERITI (Ora funziona correttamente col libro giusto)
+        JButton btnPreferiti = new JButton("❤");
+        btnPreferiti.setToolTipText("Aggiungi ai Preferiti");
+        btnPreferiti.addActionListener(e -> {
+            AcquistoController ctrl = new AcquistoController(conn);
+            if(ctrl.aggiungiAPreferiti(libro.getId())) {
+                JOptionPane.showMessageDialog(this, "Aggiunto alla Wishlist!");
+            } else {
+                JOptionPane.showMessageDialog(this, "È già nei tuoi preferiti!");
+            }
+        });
 
         JButton btnDettagli = new JButton("📖 Info");
         btnDettagli.addActionListener(e -> mostraDettaglioLibro(libro));
@@ -158,12 +178,13 @@ public class HomeView extends JFrame {
             if (ctrl.aggiungiAlCarrello(libro.getId(), 1)) {
                 carrelloSessione.add(libro); 
                 btnCarrello.setText("🛒 Carrello (" + carrelloSessione.size() + ")");
-                refreshCatalogo(""); // Ricarica le giacenze a video
+                refreshCatalogo(""); 
             } else {
                 JOptionPane.showMessageDialog(this, "Scorte esaurite!", "Errore", JOptionPane.ERROR_MESSAGE);
             }
         });
 
+        panelBottoni.add(btnPreferiti);
         panelBottoni.add(btnDettagli);
         panelBottoni.add(btnAcquista);
 
@@ -178,7 +199,6 @@ public class HomeView extends JFrame {
         return card;
     }
 
-    // Finestra popup con i dettagli completi del libro
     private void mostraDettaglioLibro(Libro libro) {
         JDialog dialog = new JDialog(this, "Dettagli: " + libro.getTitolo(), true);
         dialog.setSize(400, 300);
@@ -221,13 +241,11 @@ public class HomeView extends JFrame {
             return;
         }
 
-        // Apriamo la nuova vista professionale
         AcquistoController ctrl = new AcquistoController(conn);
         CarrelloView vistaCarrello = new CarrelloView(this, carrelloSessione, ctrl, () -> refreshCatalogo(""));
         
         vistaCarrello.setVisible(true);
         
-        // Aggiorniamo il numeretto sul bottone della Home dopo la chiusura
         btnCarrello.setText("🛒 Carrello (" + carrelloSessione.size() + ")");
     }
 }
