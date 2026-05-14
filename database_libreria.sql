@@ -101,7 +101,7 @@ COPY public.libro (id, isbn, titolo, autore, editore, prezzo, quantita_magazzino
 10	978-88-38	Piccole Donne	Louisa May Alcott	Mondadori	9.90	8
 11	978-88-07	Sapiens: Da animali a dei	Yuval Noah Harari	Bompiani	18.00	12
 12	978-88-22	One Piece - Vol. 1	Eiichiro Oda	Star Comics	5.20	20
-13	978-88-91	La Profezia dell'Armadillo	Zerocalcare	Bao Publishing	18.00	7
+13	978-88-91	La Profezia dell Armadillo	Zerocalcare	Bao Publishing	18.00	7
 14	978-88-69	Batman: Il Ritorno del Cavaliere Oscuro	Frank Miller	Panini Comics	22.50	4
 15	978-88-08	Fisica 1 - Meccanica e Termodinamica	Resnick, Halliday	CEA	55.00	10
 16	978-88-24	I Promessi Sposi (Ed. Scolastica)	Alessandro Manzoni	Zanichelli	15.50	30
@@ -176,3 +176,54 @@ ALTER TABLE ONLY public.preferiti
 
 \unrestrict wgFhCC3g9a12Vw6gMvbJlz96qnt5G7NtMCOmHYp9eqD7DYVSedwg2c8bOrzll9J
 
+--
+-- =========================================================
+-- NUOVE TABELLE E DATI AGGIUNTI PER IL CHECKOUT E DOMINIO
+-- =========================================================
+--
+
+CREATE TABLE public.utente (
+    id SERIAL PRIMARY KEY,
+    username character varying(50) UNIQUE NOT NULL,
+    password character varying(50) NOT NULL,
+    ruolo character varying(20) NOT NULL
+);
+
+CREATE TABLE public.profilo_utente (
+    utente_id integer PRIMARY KEY REFERENCES public.utente(id) ON DELETE CASCADE,
+    nome character varying(50),
+    cognome character varying(50),
+    indirizzo character varying(255)
+);
+
+CREATE TABLE public.ordine (
+    id SERIAL PRIMARY KEY,
+    utente_id integer NOT NULL REFERENCES public.utente(id) ON DELETE CASCADE,
+    totale numeric(10,2) NOT NULL,
+    stato character varying(50) DEFAULT 'Creato'::character varying NOT NULL,
+    data_ordine timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE public.linea_ordine (
+    id SERIAL PRIMARY KEY,
+    ordine_id integer NOT NULL REFERENCES public.ordine(id) ON DELETE CASCADE,
+    libro_id integer NOT NULL REFERENCES public.libro(id) ON DELETE CASCADE,
+    quantita integer DEFAULT 1 NOT NULL
+);
+
+CREATE TABLE public.spedizione (
+    id SERIAL PRIMARY KEY,
+    ordine_id integer NOT NULL UNIQUE REFERENCES public.ordine(id) ON DELETE CASCADE,
+    corriere character varying(100),
+    tracking character varying(100),
+    indirizzo_consegna character varying(255)
+);
+
+--
+-- Inserimento dell'utente necessario per il MainApp
+--
+INSERT INTO public.utente (id, username, password, ruolo) 
+VALUES (1, 'mario.rossi', 'password123', 'Cliente');
+
+-- Allineamento della sequenza per gli inserimenti futuri degli utenti
+SELECT pg_catalog.setval('public.utente_id_seq', 1, true);
