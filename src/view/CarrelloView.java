@@ -4,21 +4,27 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.List;
 import domain.Libro;
+import domain.Utente;
+import domain.Ordine;
 import businesslogic.AcquistoController;
-import businesslogic.*; 
+import businesslogic.ScontoStrategy;
+import businesslogic.ScontoFedelta;
+import businesslogic.ScontoNullo;
 
 public class CarrelloView extends JDialog {
     private DefaultListModel<String> listModel;
     private JList<String> displayList;
     private List<Libro> carrello;
     private AcquistoController controller;
+    private Utente utenteLoggato; // AGGIUNTO: L'utente che sta facendo l'acquisto
     private Runnable onUpdate; 
     private JCheckBox checkStudente; 
 
-    public CarrelloView(JFrame parent, List<Libro> carrello, AcquistoController controller, Runnable onUpdate) {
+    public CarrelloView(JFrame parent, List<Libro> carrello, AcquistoController controller, Utente utenteLoggato, Runnable onUpdate) {
         super(parent, "Il Tuo Carrello", true); 
         this.carrello = carrello;
         this.controller = controller;
+        this.utenteLoggato = utenteLoggato;
         this.onUpdate = onUpdate;
 
         setSize(500, 550); 
@@ -99,37 +105,49 @@ public class CarrelloView extends JDialog {
         }
     }
 
-    // METODO PER IL PAGAMENTO 
+    // --- METODO PER IL PAGAMENTO CON SALVATAGGIO NEL DB ---
     private void effettuaPagamento() {
         if (carrello.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Il carrello è vuoto! Aggiungi dei libri prima di pagare.");
             return;
         }
 
-        // Recuperiamo il totale finale per mostrarlo nello scontrino
-        double totaleLordo = 0;
-        for (Libro l : carrello) { totaleLordo += l.getPrezzo(); }
-        ScontoStrategy strategia = checkStudente.isSelected() ? new ScontoFedelta() : new ScontoNullo();
-        double totaleScontato = controller.calcolaTotaleOrdine(totaleLordo, strategia);
+        // Chiediamo l'indirizzo di spedizione tramite pop-up
+        String indirizzo = JOptionPane.showInputDialog(this, 
+            "Inserisci l'indirizzo di spedizione per procedere:", 
+            "Dati di Spedizione", 
+            JOptionPane.QUESTION_MESSAGE);
 
-        // Chiediamo conferma all'utente
-        int conferma = JOptionPane.showConfirmDialog(this, 
-            "Confermi l'acquisto per un totale di €" + String.format("%.2f", totaleScontato) + "?", 
-            "Conferma Pagamento", 
-            JOptionPane.YES_NO_OPTION);
+        // Se l'utente ha inserito qualcosa e non ha premuto "Annulla"
+        if (indirizzo != null && !indirizzo.trim().isEmpty()) {
+            
+            // Definiamo la strategia
+            ScontoStrategy strategia = checkStudente.isSelected() ? new ScontoFedelta() : new ScontoNullo();
+            
+            //  CHIAMIAMO IL CONTROLLER PER SALVARE FISICAMENTE NEL DATABASE
+            Ordine ordineSalvato = controller.effettuaCheckout(carrello, utenteLoggato, strategia, indirizzo);
 
-        if (conferma == JOptionPane.YES_OPTION) {
-            // Simuliamo il successo del pagamento
-            JOptionPane.showMessageDialog(this, "Pagamento completato con successo! Grazie per il tuo acquisto.");
-            
-            // Svuotiamo la lista locale
-            carrello.clear();
-            
-            // Diciamo alla Home di ricaricare l'interfaccia
-            onUpdate.run();
-            
-            // Chiudiamo la finestra del carrello
-            dispose();
+            // Verifichiamo il risultato
+            if (ordineSalvato != null) {
+                JOptionPane.showMessageDialog(this, 
+                    "Pagamento completato con successo!\n" +
+                    "ID Ordine: " + ordineSalvato.getId() + "\n" +
+                    "Totale pagato: €" + String.format("%.2f", ordineSalvato.getTotale()) + "\n" +
+                    "Spedizione verso: " + indirizzo, 
+                    "Checkout Completato", 
+                    JOptionPane.INFORMATION_MESSAGE);
+                
+                carrello.clear();
+                onUpdate.run(); // Aggiorna la home
+                dispose();      // Chiude il carrello
+            } else {
+                JOptionPane.showMessageDialog(this, 
+                    "Errore critico durante il salvataggio dell'ordine nel database.", 
+                    "Errore di Sistema", 
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Indirizzo non valido. Transazione annullata.", "Checkout Annullato", JOptionPane.WARNING_MESSAGE);
         }
     }
 }

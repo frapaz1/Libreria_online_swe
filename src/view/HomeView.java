@@ -8,7 +8,9 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
+
 import domain.Libro;
+import domain.Utente; 
 import orm.LibroDAO;
 import orm.ConnectionManager;
 import businesslogic.AcquistoController;
@@ -21,8 +23,10 @@ public class HomeView extends JFrame {
     private Connection conn;
     private List<Libro> carrelloSessione = new ArrayList<>();
     private JButton btnCarrello;
+    private Utente utenteLoggato; 
 
-    public HomeView() {
+    public HomeView(Utente utenteLoggato) {
+        this.utenteLoggato = utenteLoggato;
         conn = ConnectionManager.getInstance().getConnection();
         libroDAO = new LibroDAO(conn);
 
@@ -32,12 +36,12 @@ public class HomeView extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // HEADER E RICERCA 
+        // --- HEADER E BARRA DI RICERCA ---
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(new Color(45, 52, 54));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        JLabel titleLabel = new JLabel("LA MIA LIBRERIA ONLINE");
+        JLabel titleLabel = new JLabel("LA LIBRERIA DI " + utenteLoggato.getUsername().toUpperCase());
         titleLabel.setForeground(Color.WHITE);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 22));
         headerPanel.add(titleLabel, BorderLayout.WEST);
@@ -74,9 +78,11 @@ public class HomeView extends JFrame {
             }
         });
 
-        // BOTTONE WISHLIST IN ALTO
+        // --- BOTTONI AZIONE IN ALTO A DESTRA ---
+        
+        // Wishlist
         JButton btnApriPreferiti = new JButton("❤ Wishlist");
-        btnApriPreferiti.setBackground(new Color(231, 76, 60)); // Rosso
+        btnApriPreferiti.setBackground(new Color(231, 76, 60)); 
         btnApriPreferiti.setForeground(Color.WHITE);
         btnApriPreferiti.setFont(new Font("Arial", Font.BOLD, 14));
         btnApriPreferiti.addActionListener(e -> {
@@ -85,6 +91,18 @@ public class HomeView extends JFrame {
             view.setVisible(true);
         });
 
+        // I Miei Ordini 
+        JButton btnMieiOrdini = new JButton("📦 Ordini");
+        btnMieiOrdini.setBackground(new Color(52, 152, 219)); 
+        btnMieiOrdini.setForeground(Color.WHITE);
+        btnMieiOrdini.setFont(new Font("Arial", Font.BOLD, 14));
+        btnMieiOrdini.addActionListener(e -> {
+            AcquistoController ctrl = new AcquistoController(conn);
+            OrdiniView view = new OrdiniView(this, ctrl, utenteLoggato.getId());
+            view.setVisible(true);
+        });
+
+        // Carrello
         btnCarrello = new JButton("🛒 Carrello (0)");
         btnCarrello.setBackground(new Color(241, 196, 15));
         btnCarrello.setFont(new Font("Arial", Font.BOLD, 14));
@@ -93,13 +111,14 @@ public class HomeView extends JFrame {
         JPanel eastPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         eastPanel.setOpaque(false); 
         eastPanel.add(searchBar);
-        eastPanel.add(btnApriPreferiti); // Aggiunto alla barra in alto
+        eastPanel.add(btnApriPreferiti); 
+        eastPanel.add(btnMieiOrdini); 
         eastPanel.add(btnCarrello);
         
         headerPanel.add(eastPanel, BorderLayout.EAST);
         add(headerPanel, BorderLayout.NORTH);
 
-        // GRIGLIA DEI LIBRI 
+        // --- GRIGLIA DEI LIBRI ---
         gridPanel = new JPanel(new GridLayout(0, 3, 15, 15));
         gridPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
@@ -157,7 +176,6 @@ public class HomeView extends JFrame {
         JPanel panelBottoni = new JPanel(new FlowLayout());
         panelBottoni.setBackground(Color.WHITE);
 
-        // BOTTONE AGGIUNGI PREFERITI (Ora funziona correttamente col libro giusto)
         JButton btnPreferiti = new JButton("❤");
         btnPreferiti.setToolTipText("Aggiungi ai Preferiti");
         btnPreferiti.addActionListener(e -> {
@@ -242,7 +260,7 @@ public class HomeView extends JFrame {
         }
 
         AcquistoController ctrl = new AcquistoController(conn);
-        CarrelloView vistaCarrello = new CarrelloView(this, carrelloSessione, ctrl, () -> refreshCatalogo(""));
+        CarrelloView vistaCarrello = new CarrelloView(this, carrelloSessione, ctrl, utenteLoggato, () -> refreshCatalogo(""));
         
         vistaCarrello.setVisible(true);
         
